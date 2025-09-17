@@ -1,55 +1,161 @@
-# Chatbot Monorepo (Next.js + FastAPI)
+# Chatbot Application (Next.js + FastAPI)
 
-This repo contains a simple chatbot with a Next.js frontend and a FastAPI backend. The backend returns a demo response by default and can call Groq (ChatGroq) if `GROQ_API_KEY` is provided.
+A modern chatbot application with a Next.js frontend and FastAPI backend. The backend can run in demo mode or connect to Groq's LLM API for real AI responses.
 
-## Structure
+## 🚀 Quick Start
 
-- `frontend/`: Next.js 14 (App Router, TypeScript). Chat UI at `/chat`.
-- `backend/`: FastAPI app with `/chat` and `/health` endpoints.
+### Prerequisites
 
-## Prerequisites
+Before running the application, make sure you have:
 
-- Node.js 18+ and npm
-- Python 3.10+
+- **Node.js 18+** and **npm** (for frontend)
+- **Python 3.10+** (for backend)
+- **Git** (to clone the repository)
 
-## Setup
+### Installation & Setup
 
-### Backend
+1. **Clone the repository:**
+   ```bash
+   git clone <your-repo-url>
+   cd chatbot_with_nextjs
+   ```
 
-1. Create and activate a virtual environment (Windows PowerShell):
-   - `cd backend`
-   - `py -3 -m venv .venv`
-   - `.\\.venv\\Scripts\\Activate.ps1`
-2. Install dependencies:
-   - `pip install -r requirements.txt`
-3. Optional: enable real LLM calls by creating `.env` (copy from `.env.example`) and set `GROQ_API_KEY` (and optionally `GROQ_MODEL`, e.g., `llama3-8b-8192`).
-4. Run the server:
-   - `uvicorn app.main:app --reload --port 8000`
+2. **Set up the Backend:**
+   
+   Navigate to the backend directory and create a virtual environment:
+   
+   **Windows (PowerShell):**
+   ```powershell
+   cd backend
+   py -3 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+   
+   **Windows (Command Prompt):**
+   ```cmd
+   cd backend
+   py -3 -m venv .venv
+   .venv\Scripts\activate.bat
+   ```
+   
+   **macOS/Linux:**
+   ```bash
+   cd backend
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+   
+   Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-The backend exposes:
-- `GET http://localhost:8000/health`
-- `POST http://localhost:8000/chat` with body `{ messages: [{ role, content }], temperature? }`
+3. **Set up the Frontend:**
+   
+   Open a new terminal and navigate to the frontend directory:
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-### Frontend
+### Running the Application
 
-1. In a new terminal:
-   - `cd frontend`
-   - Copy `.env.local.example` to `.env.local` if needed, adjust `NEXT_PUBLIC_BACKEND_URL`.
-   - `npm install` (already run by the scaffold; safe to rerun)
-   - `npm run dev`
-2. Open `http://localhost:3000/chat` for the chat UI.
+You need to run both the backend and frontend servers simultaneously:
 
-## Notes
+1. **Start the Backend Server:**
+   
+   In the backend directory (with virtual environment activated):
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+   
+   The backend will be available at: `http://localhost:8000`
 
-- CORS is enabled for `http://localhost:3000` by default. If you change ports/origin, set `FRONTEND_ORIGIN` in `backend/.env`.
-- Without `GROQ_API_KEY`, the backend replies in demo mode by echoing your last message with a note.
-- To change the model, set `GROQ_MODEL` in `backend/.env`.
+2. **Start the Frontend Server:**
+   
+   In a new terminal, navigate to the frontend directory:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   
+   The frontend will be available at: `http://localhost:3000`
 
-## Next Steps
+3. **Access the Chat Interface:**
+   
+   Open your browser and go to: `http://localhost:3000/chat`
 
-- Stream responses (Server-Sent Events or websockets)
-- Persist chat history
-- Add authentication and rate limiting
+## 🔧 Configuration
 
+### Demo Mode (Default)
+The application runs in demo mode by default, where the backend echoes your messages with a note. No additional configuration is required.
 
-uvicorn app.main:app --reload --port 8000
+### Real AI Responses (Optional)
+To enable real AI responses using Groq's API:
+
+1. Get a free API key from [Groq Console](https://console.groq.com/)
+2. In the `backend` directory, create a `.env` file:
+   ```env
+   GROQ_API_KEY=your_groq_api_key_here
+   GROQ_MODEL=llama3-8b-8192
+   ```
+3. Restart the backend server
+
+## 📁 Project Structure
+
+```
+chatbot_with_nextjs/
+├── backend/                 # FastAPI backend
+│   ├── app/
+│   │   └── main.py         # Main FastAPI application
+│   └── requirements.txt    # Python dependencies
+├── frontend/               # Next.js frontend
+│   ├── src/
+│   │   └── app/
+│   │       └── chat/       # Chat interface
+│   └── package.json        # Node.js dependencies
+└── README.md
+```
+
+## 🔌 API Endpoints
+
+The backend exposes the following endpoints:
+
+- `GET /health` - Health check endpoint
+- `POST /chat` - Chat endpoint
+  ```json
+  {
+    "messages": [
+      {"role": "user", "content": "Hello!"}
+    ],
+    "temperature": 0.7
+  }
+  ```
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+1. **Port already in use:**
+   - Backend: Change port with `--port 8001` (or any available port)
+   - Frontend: Change port with `npm run dev -- -p 3001`
+
+2. **CORS errors:**
+   - Make sure the frontend is running on `http://localhost:3000`
+   - Or set `FRONTEND_ORIGIN` in `backend/.env` to match your frontend URL
+
+3. **Python virtual environment issues:**
+   - Make sure you're using the correct Python version (3.10+)
+   - Try recreating the virtual environment
+
+4. **Node.js/npm issues:**
+   - Make sure you have Node.js 18+ installed
+   - Try deleting `node_modules` and running `npm install` again
+
+### Getting Help
+
+If you encounter any issues:
+1. Check that both servers are running
+2. Verify the ports (backend: 8000, frontend: 3000)
+3. Check the browser console for any error messages
+4. Ensure all dependencies are properly installed
