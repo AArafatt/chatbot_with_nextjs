@@ -50,3 +50,6 @@ The backend exposes:
 - Stream responses (Server-Sent Events or websockets)
 - Persist chat history
 - Add authentication and rate limiting
+
+
+uvicorn app.main:app --reload --port 8000

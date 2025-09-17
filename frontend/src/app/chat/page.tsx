@@ -9,6 +9,13 @@ type Message = {
   content: string;
 };
 
+type Session = {
+  session_id: string;
+  created_at: string;
+  last_active: string;
+  message_count: number;
+};
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     { role: "system", content: "You are a helpful assistant." },
@@ -16,6 +23,8 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const backendUrl = useMemo(() => {
@@ -26,24 +35,103 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    loadSessions();
+  }, []);
+
+  const loadSessions = async () => {
+    try {
+      const res = await fetch(`${backendUrl}/sessions`);
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data);
+      }
+    } catch (err) {
+      console.error("Failed to load sessions:", err);
+    }
+  };
+
+  const createNewSession = async () => {
+    try {
+      const res = await fetch(`${backendUrl}/session/create`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentSessionId(data.session_id);
+        setMessages([
+          { role: "system", content: "You are a helpful assistant." },
+          { role: "assistant", content: "Hi! Ask me anything." },
+        ]);
+        loadSessions();
+      }
+    } catch (err) {
+      console.error("Failed to create session:", err);
+    }
+  };
+
+  const switchToSession = async (sessionId: string) => {
+    try {
+      const res = await fetch(`${backendUrl}/session/${sessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentSessionId(sessionId);
+        const sessionMessages = data.messages.length > 0 
+          ? data.messages 
+          : [
+              { role: "system", content: "You are a helpful assistant." },
+              { role: "assistant", content: "Hi! Ask me anything." },
+            ];
+        setMessages(sessionMessages);
+      }
+    } catch (err) {
+      console.error("Failed to load session:", err);
+    }
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    try {
+      const res = await fetch(`${backendUrl}/session/${sessionId}`, { method: "DELETE" });
+      if (res.ok) {
+        if (currentSessionId === sessionId) {
+          setCurrentSessionId(null);
+          setMessages([
+            { role: "system", content: "You are a helpful assistant." },
+            { role: "assistant", content: "Hi! Ask me anything." },
+          ]);
+        }
+        loadSessions();
+      }
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+    }
+  };
+
   const sendMessage = async () => {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
     setLoading(true);
-    const newMessages = [...messages, { role: "user", content: trimmed } as Message];
-    setMessages(newMessages);
+    const userMessage = { role: "user", content: trimmed } as Message;
+    setMessages(prev => [...prev, userMessage]);
     setInput("");
 
     try {
       const res = await fetch(`${backendUrl}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, temperature: 0.2 }),
+        body: JSON.stringify({ 
+          messages: [userMessage], 
+          temperature: 0.2,
+          session_id: currentSessionId 
+        }),
       });
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
       const reply: Message = data.reply;
       setMessages((prev) => [...prev, reply]);
+      
+      if (!currentSessionId) {
+        setCurrentSessionId(data.session_id);
+        loadSessions();
+      }
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
@@ -62,11 +150,50 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b p-4">
-        <h1 className="text-xl font-semibold">Chatbot</h1>
-      </header>
-      <main className="flex-1 max-w-3xl w-full mx-auto p-4 flex flex-col gap-4">
+    <div className="min-h-screen flex">
+      <aside className="w-64 border-r bg-black p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-semibold text-white">Sessions</h2>
+          <button
+            onClick={createNewSession}
+            className="px-2 py-1 text-sm bg-blue-600 text-white rounded"
+          >
+            New
+          </button>
+        </div>
+        <div className="space-y-2">
+          {sessions.map((session) => (
+            <div
+              key={session.session_id}
+              className={`p-2 rounded cursor-pointer flex justify-between items-center ${
+                currentSessionId === session.session_id ? "bg-gray-700" : "bg-gray-800 hover:bg-gray-700"
+              }`}
+            >
+              <div onClick={() => switchToSession(session.session_id)} className="flex-1">
+                <div className="text-sm font-medium text-white">
+                  Session {session.session_id.slice(0, 8)}
+                </div>
+                <div className="text-xs text-gray-400">
+                  {session.message_count} messages
+                </div>
+              </div>
+              <button
+                onClick={() => deleteSession(session.session_id)}
+                className="text-red-400 hover:text-red-300 text-sm"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      </aside>
+      <div className="flex-1 flex flex-col">
+        <header className="border-b p-4">
+          <h1 className="text-xl font-semibold">
+            Chatbot {currentSessionId && `- ${currentSessionId.slice(0, 8)}`}
+          </h1>
+        </header>
+        <main className="flex-1 max-w-3xl w-full mx-auto p-4 flex flex-col gap-4">
         <div className="flex-1 overflow-y-auto space-y-3 border rounded p-3 bg-white">
           {messages
             .filter((m) => m.role !== "system")
@@ -106,8 +233,9 @@ export default function ChatPage() {
             {loading ? "Sending..." : "Send"}
           </button>
         </div>
-        <p className="text-xs text-gray-500">Backend: {backendUrl}/chat</p>
-      </main>
+          <p className="text-xs text-gray-500">Backend: {backendUrl}/chat</p>
+        </main>
+      </div>
     </div>
   );
 }
